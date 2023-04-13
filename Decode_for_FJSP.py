@@ -19,8 +19,13 @@ class Decode:
             self.Jobs.append(Job(k, v))
     #时间顺序矩阵和机器顺序矩阵
     def Order_Matrix(self,MS):
-        JM=[]
-        T=[]
+        """
+
+        :param MS: 每一道工序对应的机器
+        :return:
+        """
+        JM=[]        # JM ： 每一个工件、每一道工序 对应的加工机器
+        T=[]         # T ： 每一个工件、每一道工序 对应的加工机器，加工使用的时间
         Ms_decompose=[]
         Site=0
         for S_i in self.J.values():
@@ -31,8 +36,8 @@ class Decode:
             T_i=[]
             for j in range(len(Ms_decompose[i])):
                 O_j=self.Processing_time[i][j]
-                M_ij=[]
-                T_ij=[]
+                M_ij=[]                 # M_ij ： i 工件 的 j 工序对应的机器编号
+                T_ij=[]                 # T_ij ： i 工件 的 j 工序对应的机器编号，所花费的加工时间
                 for Mac_num in range(len(O_j)):  # 寻找MS对应部分的机器时间和机器顺序
                     if O_j[Mac_num] != 9999:
                         M_ij.append(Mac_num)
@@ -46,21 +51,35 @@ class Decode:
         return JM,T
 
     def Earliest_Start(self,Job,O_num,Machine):
-        P_t=self.Processing_time[Job][O_num][Machine]
+        """
+        找到机器的
+        :param Job: 当前工件
+        :param O_num: 当前工序
+        :param Machine: 机器
+        :return:
+            M_Ealiest, 当前机器最早启动时间
+            Selected_Machine, 当前机器
+            P_t, 加工时长
+            O_num,   当前工序
+            last_O_end,  # 上道工序结束时间
+            End_work_time， 当前机器 完成当前工序加工后的 时间
+        """
+        P_t = self.Processing_time[Job][O_num][Machine]       # 加工时间
         last_O_end = self.Jobs[Job].Last_Processing_end_time  # 上道工序结束时间
-        Selected_Machine=Machine
+        Selected_Machine = Machine
         M_window = self.Machines[Selected_Machine].Empty_time_window()
-        M_Tstart = M_window[0]
-        M_Tend = M_window[1]
-        M_Tlen = M_window[2]
+        M_Tstart = M_window[0]      # 开始时间窗
+        M_Tend = M_window[1]        # 结束时间窗
+        M_Tlen = M_window[2]        # 时间窗口长度
         Machine_end_time = self.Machines[Selected_Machine].End_time
         ealiest_start = max(last_O_end, Machine_end_time)
         if M_Tlen is not None:  # 此处为全插入时窗
             for le_i in range(len(M_Tlen)):
-                if M_Tlen[le_i] >= P_t:
-                    if M_Tstart[le_i] >= last_O_end:
-                        ealiest_start=M_Tstart[le_i]
+                if M_Tlen[le_i] >= P_t:         # 可用时间窗口，大于加工时间。
+                    if M_Tstart[le_i] >= last_O_end:        # 这个时间窗口的开始时间，大于上一道工序的结束时间，则机器的最早可用时间为，此窗口的开始时间
+                        ealiest_start = M_Tstart[le_i]
                         break
+                    # 这个时间窗口的开始时间，小于上一道工序的结束时间，但是，这个窗口的结束时间 - 上一道工序结束时间 > 工序需要加工时间，则则机器的最早可用时间为，上一道工序结束时间
                     if M_Tstart[le_i] < last_O_end and M_Tend[le_i] - last_O_end >= P_t:
                         ealiest_start = last_O_end
                         break
@@ -82,11 +101,11 @@ class Decode:
             for le_i in range(len(M_Tlen)):
                 if M_Tlen[le_i] >= P_t:
                     if M_Tstart[le_i] >= last_O_end:
-                        ealiest_start=M_Tstart[le_i]
+                        ealiest_start = M_Tstart[le_i]
                         break
                     if M_Tstart[le_i] < last_O_end and M_Tend[le_i] - last_O_end >= P_t:
-                        if M_Tlen[le_i]-P_t>7 and O_num<7:
-                            ealiest_start=M_Tend[le_i]-P_t
+                        if M_Tlen[le_i]-P_t > 7 and O_num < 7:          # 这里做了一步小小的改进，窗口很大，远大于当前工序所需要的加工时间，通过此处设置，可以让当前作业晚一点启动。
+                            ealiest_start = M_Tend[le_i]-P_t
                         else:
                             ealiest_start = last_O_end
                         break
@@ -99,14 +118,15 @@ class Decode:
         MS=list(CHS[0:Len_Chromo])
         OS=list(CHS[Len_Chromo:2*Len_Chromo])
         Needed_Matrix=self.Order_Matrix(MS)
-        JM=Needed_Matrix[0]
-        for i in OS:
+        JM = Needed_Matrix[0]
+        for i in OS:            # 每一道工序
             Job=i
-            O_num=self.Jobs[Job].Current_Processed()
-            Machine=JM[Job][O_num]
-            Para=self.Earliest_Start(Job,O_num,Machine)
-            self.Jobs[Job]._Input(Para[0],Para[5],Para[1])
-            if Para[5]>self.fitness:
+            O_num = self.Jobs[Job].Current_Processed()            # 当前工序
+            Machine = JM[Job][O_num]
+            Para = self.Earliest_Start(Job,O_num,Machine)
+            # Para ： M_Ealiest, 当前机器最早启动时间；Selected_Machine, 当前机器；P_t, 加工时长；O_num, 当前工序；last_O_end,  # 上道工序结束时间；End_work_time， 当前机器完成当前工序加工后的时间
+            self.Jobs[Job]._Input(Para[0],Para[5],Para[1])      # 输入： 哪台机器，开始加工时间、结束加工时间
+            if Para[5]>self.fitness:                            # 这里的适应度计算部分，取的是完成当前工序后的时间，后面应该处理这里，才是适应度。
                 self.fitness=Para[5]
             self.Machines[Machine]._Input(Job,Para[0],Para[2],Para[3])
         return self.fitness
@@ -128,6 +148,7 @@ class Decode:
             self.Machines[Machine]._Input(Job, Para[0], Para[2], Para[3])
         return self.fitness
 
+    # 画甘特图
     def Gantt(self,Machines):
         M = ['red', 'blue', 'yellow', 'orange', 'green', 'palegoldenrod', 'purple', 'pink', 'Thistle', 'Magenta',
              'SlateBlue', 'RoyalBlue', 'Cyan', 'Aqua', 'floralwhite', 'ghostwhite', 'goldenrod', 'mediumslateblue',

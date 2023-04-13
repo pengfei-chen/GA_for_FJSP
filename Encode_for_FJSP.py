@@ -11,7 +11,7 @@ class Encode:
         self.J_num=J_num        #工件数
         self.M_num=M_num        #机器数
         self.CHS=[]
-        self.Len_Chromo=0
+        self.Len_Chromo=0       #总的工序数量
         for i in J.values():
             self.Len_Chromo+=i
 
@@ -28,11 +28,17 @@ class Encode:
         return np.zeros([C_num, self.Len_Chromo], dtype=int)
 
     def Site(self,Job,Operation):
+        """
+
+        :param Job:  第几个工件
+        :param Operation:  第几道工序
+        :return: 这里返回的，是工序数，
+        """
         O_num = 0
-        for i in range(len(self.J)):
-            if i == Job:
+        for i in range(len(self.J)):        # self.J ：工件：工序数 字典
+            if i == Job:                    # 当前工件，计算其 此时 的工序
                 return O_num + Operation
-            else:
+            else:                           # 非当前工件，计算其所有的工序数
                 O_num = O_num + self.J[i + 1]
         return O_num
 
@@ -42,29 +48,28 @@ class Encode:
         OS_list= self.OS_List()
         OS=self.CHS_Matrix(self.GS_num)
         for i in range(self.GS_num):
-            Machine_time = np.zeros(self.M_num, dtype=float)  # 机器时间初始化
-            random.shuffle(OS_list)  # 生成工序排序部分
-            OS[i] = np.array(OS_list)
+            Machine_time = np.zeros(self.M_num, dtype=float)    # 机器时间初始化
+            random.shuffle(OS_list)                             # 生成工序排序部分， 打乱了工序
+            OS[i] = np.array(OS_list)                           # 每一个个体，工序是怎样的
             GJ_list = [i_1 for i_1 in range(self.J_num)]
             random.shuffle(GJ_list)
-            for g in GJ_list:  # 随机选择工件集的第一个工件,从工件集中剔除这个工件
-                h = self.Matrix[g]  # 第一个工件含有的工序
-                for j in range(len(h)):  # 从工件的第一个工序开始选择机器
-                    D = h[j]
+            for g in GJ_list:                       # 随机选择工件集的第一个工件,从工件集中剔除这个工件：这里的随机通过上一步 shuffle 实现。
+                h = self.Matrix[g]                  # 第一个工件含有的工序
+                for j in range(len(h)):             # 从工件的第一个工序开始选择机器
+                    D = h[j]                        # 当前这一道工序，第 j 道工序在各个机器上的加工时长
                     List_Machine_weizhi = []
-                    for k in range(len(D)):  # 每道工序可使用的机器以及机器的加工时间
+                    for k in range(len(D)):         # 每道工序可使用的机器以及机器的加工时间
                         Useing_Machine = D[k]
                         if Useing_Machine != 9999:  # 确定可加工该工序的机器
                             List_Machine_weizhi.append(k)
                     Machine_Select = []
                     for Machine_add in List_Machine_weizhi:  # 将这道工序的可用机器时间和以前积累的机器时间相加
                         #  比较可用机器的时间加上以前累计的机器时间的时间值，并选出时间最小
-                        Machine_Select.append(Machine_time[Machine_add] + D[
-                            Machine_add])
-                    Min_time = min(Machine_Select)
-                    K = Machine_Select.index(Min_time)
-                    I = List_Machine_weizhi[K]
-                    Machine_time[I] += Min_time
+                        Machine_Select.append(Machine_time[Machine_add] + D[Machine_add])
+                    Min_time = min(Machine_Select)          # 这个工件、这道工序 的最小时间
+                    K = Machine_Select.index(Min_time)      # 这里不是可以直接用 argindex ~， 取出时间最短，对应的机器
+                    I = List_Machine_weizhi[K]              # 这其实就是取出了，第 I 台机器
+                    Machine_time[I] += Min_time             # 第 I 台机器 时间被占用了， 更新 Machine_time
                     site=self.Site(g,j)
                     MS[i][site] = K
         CHS1 = np.hstack((MS, OS))

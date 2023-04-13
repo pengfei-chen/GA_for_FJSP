@@ -9,6 +9,10 @@ class Machine_Time_window:
 
     # 机器的哪些时间窗是空的,此处只考虑内部封闭的时间窗
     def Empty_time_window(self):
+        """
+
+        :return: 开始时间窗口、结束时间窗口、
+        """
         time_window_start = []
         time_window_end = []
         len_time_window = []
@@ -37,6 +41,14 @@ class Machine_Time_window:
         return burden
 
     def _Input(self, Job, M_Ealiest, P_t, O_num):
+        """
+
+        :param Job:  工件
+        :param M_Ealiest:   当前机器最早启动时间
+        :param P_t:     当前工序所需加工时长
+        :param O_num:   当前工序
+        :return:
+        """
         if self.O_end != []:
             if self.O_start[-1] > M_Ealiest:
                 for i in range(len(self.O_end)):
@@ -46,9 +58,11 @@ class Machine_Time_window:
             else:
                 self.assigned_task.append([Job + 1, O_num + 1])
         else:
+            # 填入工件、工序
             self.assigned_task.append([Job + 1, O_num + 1])
+        # 更新当前这台机器的 开始时间、结束时间
         self.O_start.append(M_Ealiest)
         self.O_start.sort()
         self.O_end.append(M_Ealiest + P_t)
         self.O_end.sort()
-        self.End_time = self.O_end[-1]
+        self.End_time = self.O_end[-1]          # 最后一道工序的完结时间，作为这台机器的最晚工作时间点。
